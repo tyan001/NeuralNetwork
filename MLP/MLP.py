@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# **Thony Yan <br>**
+# **Thony Yan <br>
+# PID:3913880**
 
 # In[1]:
 
@@ -9,10 +10,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
+np.random.seed(0)
 
 
 # # Multilayer Perceptron (MLP)
 # 
+# To understand a multilayer perceptron, we must see how a regular perceptron function. A perceptron is a very simple unit for learning machine. It does this by taking an input and multiplying it by their associated weights. The weights signify how important the input is. Now when you have multiple perceptrons, it forms a multilayer perceptron.[1] 
+
+# ![](images/Perceptron2.png)
+
+# A multilayer perceptron is a structure where many perceptrons are stacked to form different layers to solve relatively complex problems. A basic MLP typically has three types of layers, the input layer which are the features we want to predict, the output layer that are the results after passing though the MLP, and the hidden layer which are basically neural networks that sits between the input and output layer. Below is a simple MLP structure with two features, three neurons as the hidden layer, and three outputs in the output layer. Note: the bias in the layers store as a value of one that makes it possible for the activation function be able to adjust.
+
+# ![alt text](images/MLP.png)
+
+# Now in this project I will implement the MLP structure in Python. After the creating of the, I will implement the training algorithm that occurs in an MLP. Which consists of the feed forward calculation, the backpropagation, and finally updating the weights so that the neural network learns from the features pass through the network.
+
+# ## The Data
+
+# First we must create the data to train on. We will be making an array of signed binary 1s that when arrange into a 5 by 5 matrix will display an image of the 5 vowels of the English alphabet *a ,e, i, o, u*. After creating the vowels we will create 4 more images from the original vowels but each image will have 1 pixel change (the 1 will turn to a -1 and vice versa).
+
+# In this following example we will see how it is suppose to look:<br>
+
+# ![](images/A_image.png)
 
 # In[2]:
 
@@ -56,6 +75,8 @@ def show(figs): # This function is use to show image
         plt.imshow(figs[i]-1, cmap='Greys')
 
 
+# **In the following snippet of code we can see all 5 vowels display.**
+
 # In[7]:
 
 
@@ -64,6 +85,8 @@ for i in range(1,6):
     img.add_subplot(5, 5, i)
     plt.imshow(base[i-1]-1, cmap='Greys')
 
+
+# **Here we are getting the x and y coordinates to invert the pixel. Example we will get the original vowel A matrix and invert the pixel located at (2,1) to create a variation of A. Then we will repeat this process for (3,2) and so on.**
 
 # In[8]:
 
@@ -115,6 +138,8 @@ show(o_test)
 show(u_test)
 
 
+# **Above are the vowels and their 4 variations that we will use as the training set for our perceptron and adaline algorithm. Next we will be creating the test sets. In test set 1 we will still have the original vowels but now with a different 1 pixel variation.**
+
 # In[13]:
 
 
@@ -156,6 +181,8 @@ show(tset1_u)
 
 tset1 = np.array([tset1_a,tset1_e,tset1_i,tset1_o,tset1_u])
 
+
+# **For test set 2 we will be grabbing the vowel variations from test set 1 and inverting 1 more pixel.**
 
 # In[18]:
 
@@ -206,6 +233,8 @@ show(tset2_u)
 tset2 = np.array([tset2_a,tset2_e,tset2_i,tset2_o,tset2_u])
 
 
+# **We will be using the same process to create test set 3 but using the variations of test set 2**
+
 # In[23]:
 
 
@@ -241,6 +270,23 @@ show(tset3_u)
 
 tset3 = np.array([tset3_a,tset3_e,tset3_i,tset3_o,tset3_u])
 
+
+# ## The Neural Network Training Cycle
+
+# ### Feedforward
+# Feedforward or the forward propagation is the calculation and storage of intermediate variables from the input layer all the way to the output layer. we first get the sum of the weights multiply by the inputs and adding the bias, then we apply the activation function to get the activation value and use that as the output to pass it to the next consecutive layer.
+
+# ![](images/feedforward.PNG)
+
+# ### Back Propagation
+# Backpropagation is the method of calculating the gradient of the neural networks parameters. We do this by traversing the network in reverse order, meaning we are moving from the output layer to the input layer. By using partial derivatives of the parameters, $F^M(n^M)$, we can calculate the sensitivity to update the weights in the MLP.
+
+# ![](images/BackPropagation.PNG)
+
+# ### Weight update
+# After calculating all the sensitivity from the backpropagation we can begin updating the weights and bias from the network. We use alpha so we can slowly change the weights as dramatic changes to the weights will not produce desire results
+
+# ![](images/WeightUpdate.PNG)
 
 # In[27]:
 
@@ -323,7 +369,7 @@ class Neural_Network:
         return error
     
     @staticmethod
-    def hardlim(output, tresh=0.35):
+    def hardlim(output, tresh=0.32):
         
         output[output>tresh] = 1
         output[output<tresh] = -1
@@ -379,7 +425,7 @@ class Neural_Network:
         self.update_weights(alpha)
         return self.mse(error)
 
-    def predict(self,x):
+    def threshold_predict(self,x,thresh=0.32):
         self.a_val[0] = x
         self.z_val[0] = x
         for layer in range(len(self.weights)):
@@ -389,273 +435,47 @@ class Neural_Network:
             self.z_val[layer+1] = z
             self.a_val[layer+1] = a
         
-        print(self.max_arg(a))
+        return self.hardlim(a, thresh)
+    
+    def max_arg_predict(self,x):
+        self.a_val[0] = x
+        self.z_val[0] = x
+        for layer in range(len(self.weights)):
+
+            z = np.dot(self.a_val[layer], self.weights[layer]) + self.bias[layer]
+            a = self.activation[layer](z)
+            self.z_val[layer+1] = z
+            self.a_val[layer+1] = a
+        
+        return self.max_arg(a)
 
 
 # In[28]:
 
 
-y = np.array([1.,-1.,-1.,-1.,-1.])
+model = Neural_Network()
+model.add_layer(10, 'sigmoid', input_shape=(4,5))
+model.add_layer(5, 'tanh')
 
-inputs = np.array(a_test[0].flatten(), dtype=np.float)
-inputs
 
+# The way we are expressing the target output are as follow.
+
+# ![](images/dataset_answer.PNG)
 
 # In[29]:
-
-
-model = Neural_Network()
-
-
-# In[30]:
-
-
-
-model.add_layer(10, 'sigmoid', input_shape=(4,5))
-model.add_layer(5, 'tanh')
-
-
-# In[31]:
-
-
-print(model.weights[0].shape)
-print(model.weights[1].shape)
-print(model.bias[0].shape)
-print(model.bias[1].shape)
-
-
-# In[32]:
-
-
-model.feedforward(inputs)
-
-
-# In[33]:
-
-
-model.a_val
-
-
-# In[34]:
-
-
-model.z_val
-
-
-# In[35]:
-
-
-error = model.error(y, model.a_val[-1])
-error
-
-
-# In[36]:
-
-
-s = model.activation[1](model.z_val[2], derivative=True) * error
-st = s.reshape(s.shape[0],-1)
-st
-
-
-# In[37]:
-
-
-a = model.a_val[1]
-a = a.reshape(a.shape[0],-1)
-a
-
-
-# In[38]:
-
-
-Wnew = np.dot(st,a.T)
-
-
-# In[39]:
-
-
-Wnew.T.shape
-
-
-# In[40]:
-
-
-model.weights[1].shape
-
-
-# In[41]:
-
-
-model.weights[1]
-
-
-# In[42]:
-
-
-model.back_propagate(error)
-
-
-# In[43]:
-
-
-model.sensitivity[1].shape
-
-
-# In[44]:
-
-
-model.bias[1].shape
-
-
-# In[45]:
-
-
-model.weights[0][14]
-
-
-# In[46]:
-
-
-model.update_weights()
-
-
-# In[47]:
-
-
-print(model.weights[0].shape)
-print(model.weights[1].shape)
-print(model.bias[0].shape)
-print(model.bias[1].shape)
-
-
-# In[48]:
-
-
-a = model.a_val
-t = np.dot(inputs, model.weights[0])
-t
-
-
-# In[49]:
-
-
-model = Neural_Network()
-model.add_layer(10, 'sigmoid', input_shape=(4,5))
-model.add_layer(5, 'tanh')
-
-
-# In[50]:
 
 
 training_set = a_test, e_test, i_test, o_test, u_test
 training_set
 
 
-# In[51]:
+# In[30]:
 
 
 y_set = np.array([[1.,-1,-1,-1,-1], [-1,1,-1,-1,-1],[-1,-1,1,-1,-1],[-1,-1,-1,1,-1],[-1,-1,-1,-1,1]])
 
 
-# In[52]:
-
-
-epoch = 100
-total_mse = []
-random_w1 = []
-random_w2 = []
-random_w3 = []
-bias1 = []
-bias2 = []
-random1 = np.random.randint(20)
-random2 = np.random.randint(10)
-random3 = np.random.randint(10)
-random4 = np.random.randint(5)
-bias_random1 = np.random.randint(10)
-bias_random2 = np.random.randint(5)
-for i in range(epoch):
-    mse = 0
-    random_w1.append(model.weights[0][random1][random2])
-    random_w2.append(model.weights[1][random3][random4])
-    bias1.append(model.bias[0][bias_random1])
-    bias2.append(model.bias[1][bias_random2])
-
-    for i in range(len(training_set)):
-        set = training_set[i]
-        target = y_set[i]
-        for j in range(len(set)):
-            #show(set)
-            #print(target)
-            mse += model.train(set[i].flatten(), target, 0.1)
-
-    mse = (mse / 25.)
-    total_mse.append(mse)
-    
-
-
-# In[53]:
-
-
-for i in range(len(training_set)):
-    set = training_set[i]
-    for j in range(len(set)):
-        model.predict(set[i].flatten())
-
-    print('')
-
-
-# In[54]:
-
-
-plt.plot(total_mse)
-plt.xlabel('epoch')
-plt.ylabel('mse value')
-plt.title('mse')
-
-
-# In[55]:
-
-
-total_mse
-
-
-# In[56]:
-
-
-plt.plot(random_w1)
-plt.xlabel('epoch')
-plt.ylabel('weight value')
-plt.title('layer 1, weight (' + str(random1) + ',' + str(random2) + ')')
-
-
-# In[57]:
-
-
-plt.plot(random_w2)
-plt.xlabel('epoch')
-plt.ylabel('weight value')
-plt.title('layer 2, weight (' + str(random3) + ',' + str(random4) + ')')
-
-
-# In[58]:
-
-
-plt.plot(bias1)
-plt.xlabel('epoch')
-plt.ylabel('bias value')
-plt.title('layer 1, bias (' + str(bias_random1) + ')')
-
-
-# In[59]:
-
-
-plt.plot(bias2)
-plt.xlabel('epoch')
-plt.ylabel('bias value')
-plt.title('layer 2, bias (' + str(bias_random2) + ')')
-
-
-# In[60]:
+# In[31]:
 
 
 def fit(model,epochs, alpha, dataset, targets, exit=0.01, input_l=20, hidden_l=10, output_l=5):
@@ -731,7 +551,9 @@ def fit(model,epochs, alpha, dataset, targets, exit=0.01, input_l=20, hidden_l=1
     print('\n number of epochs to reach an mse of ' , epoch)
 
 
-# In[61]:
+# **During training we want to minimize the error which is the loss function. In this experiments we will be using the Mean Squared Error as our loss function. By calculating the MSE at each epoch we can see how well the model is learning and use it as a metric to tweak hyper parameters for better testing** 
+
+# In[32]:
 
 
 model1 = Neural_Network()
@@ -739,13 +561,13 @@ model1.add_layer(10, 'sigmoid', input_shape=(4,5))
 model1.add_layer(5, 'tanh')
 
 
-# In[62]:
+# In[33]:
 
 
-fit(model1,epochs=100, alpha=0.1, dataset=training_set, targets=y_set, exit=0.005)
+fit(model1,epochs=250, alpha=0.1, dataset=training_set, targets=y_set, exit=0.001)
 
 
-# In[63]:
+# In[34]:
 
 
 model2 = Neural_Network()
@@ -753,13 +575,13 @@ model2.add_layer(10, 'sigmoid', input_shape=(4,5))
 model2.add_layer(5, 'tanh')
 
 
-# In[64]:
+# In[35]:
 
 
-fit(model2,epochs=100, alpha=0.01, dataset=training_set, targets=y_set, exit=0.005)
+fit(model2,epochs=250, alpha=0.01, dataset=training_set, targets=y_set, exit=0.001)
 
 
-# In[65]:
+# In[36]:
 
 
 model3 = Neural_Network()
@@ -767,41 +589,407 @@ model3.add_layer(10, 'sigmoid', input_shape=(4,5))
 model3.add_layer(5, 'tanh')
 
 
-# In[66]:
+# In[37]:
 
 
-fit(model3,epochs=100, alpha=0.001, dataset=training_set, targets=y_set, exit=0.005)
+fit(model3,epochs=250, alpha=0.001, dataset=training_set, targets=y_set, exit=0.001)
 
 
-# In[67]:
+# Above we have tested three different alphas, 0.1, 0.01, and 0.001. I also use the MSE value to exit the training earlier as I believe an MSE less than 0.001 is enough training. This can always be change. From the results all the models were able to reach an MSE less than 0.001. But the 3rd model with an alpha=0.001 was able to reach the MSE threshold much quicker and we will be using it to test our test dataset.
+
+# We will start testing how the model will perform with the testing datasets. Now there are two ways I am deciding how to interpret the output values from the model. One is by using a threshold function. so if the output is greater than 0.32 it will be set to 1 otherwise -1. The other way is by making the biggest number in the outputs to 1 and set the rest to -1.
+
+# In[38]:
 
 
+correct = 0
 for i in range(len(tset1)):
     sets = tset1[i]
+    _y = y_set[i]
     for j in range(len(sets)):
-        model1.predict(sets[i].flatten())
+        y = model3.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
 
-    print('')
+
+# In[39]:
 
 
-# In[68]:
-
-
+correct = 0
 for i in range(len(tset2)):
     sets = tset2[i]
+    _y = y_set[i]
     for j in range(len(sets)):
-        model1.predict(sets[i].flatten())
+        y = model3.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+        
+print(f'{(correct/25) * 100}% acc')
 
-    print('')
+
+# In[40]:
 
 
-# In[69]:
-
-
+correct = 0
 for i in range(len(tset3)):
     sets = tset3[i]
+    _y = y_set[i]
     for j in range(len(sets)):
-        model1.predict(sets[i].flatten())
+        y = model3.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+        
+print(f'{(correct/25) * 100}% acc')
 
-    print('')
 
+# In[41]:
+
+
+correct = 0
+for i in range(len(tset1)):
+    sets = tset1[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = model3.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+        
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[42]:
+
+
+correct = 0
+for i in range(len(tset2)):
+    sets = tset2[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = model3.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[43]:
+
+
+correct = 0
+for i in range(len(tset3)):
+    sets = tset3[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = model3.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# As we can see from using our test set the model is doing well at classifying any test data we passed to it. It gets an accuracy of 100% for all test data that has some pixel distortion.
+
+# In this section we will be setting 20% of the of the weights in the model to 0 to see the impact of it, and see how well it still performs
+
+# In[44]:
+
+
+def destroy_weights(model, percent=0.2):
+    for layers in range(len(model.weights)):
+        n1 = model.weights[layers].shape[0]
+        n2 = model.weights[layers].shape[1]
+        twl = n1 * n2 # total weights in layer
+        twl = int(twl* 0.2)
+        destroyed = 0
+        while(destroyed != twl):
+            r1 = np.random.randint(low=0, high=n1)
+            r2 = np.random.randint(low=0, high=n2)
+        
+            if model.weights[layers][r1][r2]!=0:
+                model.weights[layers][r1][r2] = 0
+                destroyed = destroyed + 1
+            else:
+                pass
+
+
+# In[45]:
+
+
+copy_model = copy.deepcopy(model3)
+
+
+# In[46]:
+
+
+copy_model.weights[0].shape
+
+
+# In[47]:
+
+
+destroy_weights(copy_model, percent=0.2)
+
+
+# In[48]:
+
+
+print(f"There are {np.count_nonzero(copy_model.weights[0]==0)} weights that are zero from input to hidden layer")
+print(f"There are {np.count_nonzero(copy_model.weights[1]==0)} weights that are zero from hidden layer to output")
+
+
+# In[49]:
+
+
+correct = 0
+for i in range(len(tset1)):
+    sets = tset1[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[50]:
+
+
+correct = 0
+for i in range(len(tset2)):
+    sets = tset2[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[51]:
+
+
+correct = 0
+for i in range(len(tset3)):
+    sets = tset3[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[52]:
+
+
+correct = 0
+for i in range(len(tset1)):
+    sets = tset1[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[53]:
+
+
+correct = 0
+for i in range(len(tset2)):
+    sets = tset2[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[54]:
+
+
+correct = 0
+for i in range(len(tset3)):
+    sets = tset3[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# ### Results 1
+# 
+# When setting 20% of the weights in the model to 0 it affected the accuracy of the testing dataset. When using the threshold method we see that it can classify the tset1 with 100% accuracy but when testing tset2 and tset3 we get 80% and 60% respectively. <br>
+# 
+# When doing the biggest number method we see that the tset1 gets 100% accuracy  while tset2 and tset3 gets 80% accuracy. <br>
+# 
+# This is most likely due to the fact that the weights that were set to 0 were vital in the way on deciding what class its suppose to be.
+
+# setting 20% of the weights to zero. Basically 40% of the weights will be set to zero.
+
+# In[55]:
+
+
+destroy_weights(copy_model, percent=0.2)
+
+
+# In[56]:
+
+
+print(f"There are {np.count_nonzero(copy_model.weights[0]==0)} weights that are zero from input to hidden layer")
+print(f"There are {np.count_nonzero(copy_model.weights[1]==0)} weights that are zero from hidden layer to output")
+
+
+# In[57]:
+
+
+correct = 0
+for i in range(len(tset1)):
+    sets = tset1[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[58]:
+
+
+correct = 0
+for i in range(len(tset2)):
+    sets = tset2[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[59]:
+
+
+correct = 0
+for i in range(len(tset3)):
+    sets = tset3[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.threshold_predict(sets[i].flatten(), thresh=0.32)
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+    
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[60]:
+
+
+correct = 0
+for i in range(len(tset1)):
+    sets = tset1[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[61]:
+
+
+correct = 0
+for i in range(len(tset2)):
+    sets = tset2[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# In[62]:
+
+
+correct = 0
+for i in range(len(tset3)):
+    sets = tset3[i]
+    _y = y_set[i]
+    for j in range(len(sets)):
+        y = copy_model.max_arg_predict(sets[i].flatten())
+        if np.array_equal(_y,y):
+            correct += 1
+        print(f'target = {_y}')
+        print(f'     y = {y}')
+        print('')
+print(f'{(correct/25) * 100}% acc')
+
+
+# ### Results 2
+# 
+# When setting 20% of the weights in the model to 0 it affected the accuracy of the testing dataset. When using the threshold method we see that it can classify the tset1 with 80% accuracy but when testing tset2 and tset3 we get 60% and 40% respectively. This shows that we have heavily compromise the models when setting 40% of the weights to 0. Although it can handle a 1 bit pixel error when adding 2 or 3 pixel error it will struggle  <br>
+# 
+# When doing the biggest number method we see that the tset1 gets 100% accuracy  while tset2 and tset3 gets 80% accuracy. This is very interesting as with this method the model did not suffer at all compare to the threshold method. This shows that depending on how you interpret the output out the end can influence the accuracy of the model.
